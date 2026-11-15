@@ -11,12 +11,17 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq libssl-dev
           cd "$HOME"
-          curl -sL https://github.com/theos/theos/archive/refs/heads/master.tar.gz | tar xz
-          mv theos-master theos
-          curl -sL https://github.com/theos/toolchain/archive/refs/heads/master.tar.gz | tar xz -C theos
-          mv theos/toolchain-master theos/toolchain
-          curl -sL https://github.com/theos/sdks/archive/refs/heads/master.tar.gz | tar xz -C theos
-          mv theos/sdks-master theos/sdks
+          dl() {
+            for b in main master; do
+              if curl -fsSL "https://codeload.github.com/$1/tar.gz/refs/heads/$b" -o /tmp/t.tgz && tar tzf /tmp/t.tgz >/dev/null 2>&1; then
+                echo "$b"; return 0
+              fi
+            done
+            return 1
+          }
+          b=$(dl theos/theos);     tar xzf /tmp/t.tgz -C "$HOME";        mv "$HOME/theos-$b" "$HOME/theos"
+          b=$(dl theos/toolchain); tar xzf /tmp/t.tgz -C "$HOME/theos";  mv "$HOME/theos/toolchain-$b" "$HOME/theos/toolchain"
+          b=$(dl theos/sdks);      tar xzf /tmp/t.tgz -C "$HOME/theos";  mv "$HOME/theos/sdks-$b" "$HOME/theos/sdks"
           echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
       - name: ellekit
         continue-on-error: true
