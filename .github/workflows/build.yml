@@ -1,0 +1,31 @@
+name: build
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Theos
+        run: |
+          git clone --recursive --depth 1 https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+      - name: ellekit
+        continue-on-error: true
+        run: |
+          mkdir -p vendor
+          url=$(curl -s https://api.github.com/repos/elevatedperms/ellekit/releases/latest | grep -o 'https://[^"]*\.deb' | head -1)
+          if [ -z "$url" ]; then
+            f=$(curl -sL https://ellekit.space/Packages.bz2 | bzip2 -d | awk '/^Filename:/{print $2; exit}')
+            url="https://ellekit.space/${f#./}"
+          fi
+          curl -sL "$url" -o /tmp/ek.deb
+          dpkg-deb -x /tmp/ek.deb /tmp/ek
+          find /tmp/ek -name 'libellekit.dylib' -exec cp {} vendor/ \;
+      - name: Build
+        run: make FINALPACKAGE=1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MCHeat
+          path: |
+            .theos/obj/arm64/MCHeat.dylib
+            vendor/libellekit.dylib
