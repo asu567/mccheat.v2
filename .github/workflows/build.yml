@@ -17,12 +17,20 @@ jobs:
             done
             return 1
           }
-          b=$(dl theos/theos); tar xzf /tmp/t.tgz -C "$HOME";       mv "$HOME/theos-$b" "$HOME/theos"
+          b=$(dl theos/theos); tar xzf /tmp/t.tgz -C "$HOME"; mv "$HOME/theos-$b" "$HOME/theos"
           b=$(dl theos/sdks);  tar xzf /tmp/t.tgz -C "$HOME/theos"; mv "$HOME/theos/sdks-$b" "$HOME/theos/sdks"
+          mkdir -p "$HOME/theos/vendor"
+          for pair in "dm.pl dm.pl" "include headers" "lib lib" "logos logos" "nic nic" "templates templates" "orion orion"; do
+            set -- $pair
+            b=$(dl "theos/$2")
+            tar xzf /tmp/t.tgz -C "$HOME/theos/vendor"
+            mv "$HOME/theos/vendor/$2-$b" "$HOME/theos/vendor/$1"
+          done
           echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
       - name: ellekit
         continue-on-error: true
         run: |
+          set -eux
           mkdir -p vendor
           url=$(curl -s https://api.github.com/repos/elevatedperms/ellekit/releases/latest | grep -o 'https://[^"]*\.deb' | head -1)
           if [ -z "$url" ]; then
@@ -30,8 +38,16 @@ jobs:
             url="https://ellekit.space/${f#./}"
           fi
           curl -sL "$url" -o /tmp/ek.deb
-          dpkg-deb -x /tmp/ek.deb /tmp/ek
-          find /tmp/ek -name 'libellekit.dylib' -exec cp {} vendor/ \;
+          mkdir -p /tmp/ek && cd /tmp/ek
+          ar x /tmp/ek.deb
+          d=$(ls data.tar.* | head -1)
+          case "$d" in
+            *.gz)  tar xzf "$d" ;;
+            *.xz)  tar xJf "$d" ;;
+            *.zst) brew install zstd >/dev/null 2>&1; tar --zstd -xf "$d" ;;
+          esac
+          find . -name 'libellekit.dylib' -exec cp {} "$GITHUB_WORKSPACE/vendor/" \;
+          ls -l "$GITHUB_WORKSPACE/vendor"
       - name: Build
         run: make FINALPACKAGE=1
       - uses: actions/upload-artifact@v4
