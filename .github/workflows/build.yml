@@ -38,6 +38,7 @@ jobs:
           grab nic nic
           grab templates templates
           grab orion orion
+          mkdir -p "$HOME/theos/vendor/include/.git" "$HOME/theos/vendor/lib/.git"
           ls -la "$HOME/theos/vendor"
           test -d "$HOME/theos/vendor/include"
           test -d "$HOME/theos/vendor/lib"
