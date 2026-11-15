@@ -7,7 +7,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Theos
         run: |
-          set -eux
+          set -eu
           cd "$HOME"
           dl() {
             for b in main master; do
@@ -19,18 +19,33 @@ jobs:
           }
           b=$(dl theos/theos); tar xzf /tmp/t.tgz -C "$HOME"; mv "$HOME/theos-$b" "$HOME/theos"
           b=$(dl theos/sdks);  tar xzf /tmp/t.tgz -C "$HOME/theos"; mv "$HOME/theos/sdks-$b" "$HOME/theos/sdks"
-          mkdir -p "$HOME/theos/vendor"
-          for pair in "dm.pl dm.pl" "include headers" "lib lib" "logos logos" "nic nic" "templates templates" "orion orion"; do
-            set -- $pair
-            b=$(dl "theos/$2")
-            tar xzf /tmp/t.tgz -C "$HOME/theos/vendor"
-            mv "$HOME/theos/vendor/$2-$b" "$HOME/theos/vendor/$1"
-          done
+          mkdir -p "$HOME/theos/vendor" /tmp/x
+          grab() {
+            for b in main master; do
+              if curl -fsSL "https://codeload.github.com/theos/$1/tar.gz/refs/heads/$b" -o /tmp/t.tgz && tar tzf /tmp/t.tgz >/dev/null 2>&1; then
+                tar xzf /tmp/t.tgz -C /tmp/x
+                rm -rf "$HOME/theos/vendor/$2"
+                mv "/tmp/x/$1-$b" "$HOME/theos/vendor/$2"
+                return 0
+              fi
+            done
+            echo "FAIL: $1"; return 1
+          }
+          grab headers include
+          grab lib lib
+          grab logos logos
+          grab dm.pl dm.pl
+          grab nic nic
+          grab templates templates
+          grab orion orion
+          ls -la "$HOME/theos/vendor"
+          test -d "$HOME/theos/vendor/include"
+          test -d "$HOME/theos/vendor/lib"
           echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
       - name: ellekit
         continue-on-error: true
         run: |
-          set -eux
+          set -eu
           mkdir -p vendor
           url=$(curl -s https://api.github.com/repos/elevatedperms/ellekit/releases/latest | grep -o 'https://[^"]*\.deb' | head -1)
           if [ -z "$url" ]; then
